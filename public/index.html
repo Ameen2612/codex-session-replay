@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codex Session Replay</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, sans-serif; background: #0d1117; color: #e6edf3; margin: 0; display: flex; height: 100vh; }
+  #sidebar { width: 300px; border-right: 1px solid #30363d; overflow-y: auto; padding: 16px; }
+  #sidebar h1 { font-size: 16px; margin: 0 0 16px; }
+  .session-item { padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 13px; }
+  .session-item:hover { background: #161b22; }
+  .session-item.active { background: #1f6feb33; border: 1px solid #58a6ff; }
+  .session-item .cwd { color: #8b949e; font-size: 11px; margin-top: 2px; word-break: break-all; }
+  #main { flex: 1; overflow-y: auto; padding: 24px; }
+  #timeline { display: flex; flex-direction: column; gap: 12px; max-width: 800px; }
+  .event { border-left: 3px solid #30363d; padding: 10px 16px; border-radius: 6px; background: #161b22; }
+  .event .time { font-size: 11px; color: #8b949e; }
+  .event .type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
+  .event.user { border-left-color: #58a6ff; }
+  .event.commentary { border-left-color: #d29922; }
+  .event.final { border-left-color: #3fb950; }
+  .event.tool { border-left-color: #a371f7; }
+  .event.diff { border-left-color: #f778ba; }
+  .event pre { white-space: pre-wrap; word-break: break-word; background: #0d1117; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 6px; max-height: 300px; overflow-y: auto; }
+  #placeholder { color: #8b949e; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>Codex Sessions</h1>
+  <div id="sessionList">Loading...</div>
+</div>
+<div id="main">
+  <div id="timeline"><p id="placeholder">Select a session from the left.</p></div>
+</div>
+
+<script>
+let activeId = null;
+
+async function loadSessions() {
+  const res = await fetch('/api/sessions');
+  const sessions = await res.json();
+  const list = document.getElementById('sessionList');
+  if (!sessions.length) {
+    list.innerHTML = '<p style="color:#8b949e;font-size:13px;">No sessions found yet. Run a Codex task first.</p>';
+    return;
+  }
+  list.innerHTML = '';
+  sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'session-item';
+    div.dataset.id = s.id;
+    div.innerHTML = '<div>' + (s.timestamp || s.filename) + '</div>' +
+      '<div class="cwd">' + s.cwd + '</div>';
+    div.addEventListener('click', () => selectSession(s.id, div));
+    list.appendChild(div);
+  });
+}
+
+async function selectSession(id, el) {
+  document.querySelectorAll('.session-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  activeId = id;
+  const res = await fetch('/api/sessions/' + id);
+  const events = await res.json();
+  renderTimeline(events);
+}
+
+function renderTimeline(events) {
+  const timeline = document.getElementById('timeline');
+  timeline.innerHTML = '';
+  events.forEach(obj => {
+    const card = buildCard(obj);
+    if (card) timeline.appendChild(card);
+  });
+  if (!timeline.children.length) {
+    timeline.innerHTML = '<p id="placeholder">No renderable events in this session.</p>';
+  }
+}
+
+function buildCard(obj) {
+  const payload = obj.payload || {};
+  let type = null, label = '', body = '';
+
+  if (payload.type === 'user_message') {
+    type = 'user'; label = 'User Prompt'; body = payload.message;
+  } else if (payload.type === 'agent_message') {
+    type = payload.phase === 'final_answer' ? 'final' : 'commentary';
+    label = payload.phase === 'final_answer' ? 'Codex Final Answer' : 'Codex Commentary';
+    body = payload.message;
+  } else if (obj.type === 'response_item' && payload.type === 'custom_tool_call') {
+    type = 'tool'; label = 'Tool Call: ' + (payload.name || '');
+    body = payload.input || '';
+  } else if (payload.type === 'patch_apply_end') {
+    type = 'diff'; label = 'File Change';
+    const changes = payload.changes || {};
+    body = Object.entries(changes).map(([p, c]) =>
+      p + ' (' + c.type + ')\n' + (c.content || '')
+    ).join('\n\n');
+  }
+
+  if (!type) return null;
+  const div = document.createElement('div');
+  div.className = 'event ' + type;
+  div.innerHTML = '<div class="time">' + (obj.timestamp || '') + '</div>' +
+    '<div class="type">' + label + '</div>' +
+    (body ? '<pre>' + escapeHtml(body) + '</pre>' : '');
+  return div;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+loadSessions();
+</script>
+</body>
+</html>
