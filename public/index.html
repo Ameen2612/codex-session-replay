@@ -3,117 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <title>Codex Session Replay</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23a371f7' stroke-width='5'/%3E%3Cpath d='M32 19v14l10 6M14 32h6M44 32h6' fill='none' stroke='%23a371f7' stroke-linecap='round' stroke-linejoin='round' stroke-width='5'/%3E%3C/svg%3E">
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Segoe UI, sans-serif; background: #0d1117; color: #e6edf3; margin: 0; display: flex; height: 100vh; }
   #sidebar { width: 300px; border-right: 1px solid #30363d; overflow-y: auto; padding: 16px; }
-  #sidebar h1 { font-size: 16px; margin: 0 0 16px; }
-  .session-item { padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 13px; }
-  .session-item:hover { background: #161b22; }
-  .session-item.active { background: #1f6feb33; border: 1px solid #58a6ff; }
-  .session-item .cwd { color: #8b949e; font-size: 11px; margin-top: 2px; word-break: break-all; }
-  #main { flex: 1; overflow-y: auto; padding: 24px; }
-  #timeline { display: flex; flex-direction: column; gap: 12px; max-width: 800px; }
-  .event { border-left: 3px solid #30363d; padding: 10px 16px; border-radius: 6px; background: #161b22; }
-  .event .time { font-size: 11px; color: #8b949e; }
-  .event .type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
-  .event.user { border-left-color: #58a6ff; }
-  .event.commentary { border-left-color: #d29922; }
-  .event.final { border-left-color: #3fb950; }
-  .event.tool { border-left-color: #a371f7; }
-  .event.diff { border-left-color: #f778ba; }
-  .event pre { white-space: pre-wrap; word-break: break-word; background: #0d1117; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 6px; max-height: 300px; overflow-y: auto; }
-  #placeholder { color: #8b949e; }
+  .sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  #sidebar h1 { font-size: 16px; margin: 0; }
+  button { color: #e6edf3; background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 12px; cursor: pointer; }
+  button:hover { background: #30363d; border-color: #8b949e; } button:focus-visible, input:focus-visible { outline: none; border-color: #58a6ff; box-shadow: 0 0 0 3px #1f6feb33; }
+  .theme-action { background: #161b22; border-color: #30363d; border-radius: 8px; padding: 10px 16px; transition: border-color .15s ease, background .15s ease; }.theme-action:hover { background: #21262d; border-color: #58a6ff; }
+  .session-item { display: flex; align-items: flex-start; gap: 9px; padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 13px; }
+  .session-item:hover { background: #161b22; } .session-item.active { background: #1f6feb33; border: 1px solid #58a6ff; }
+  .session-item .cwd { color: #8b949e; font-size: 11px; margin-top: 2px; word-break: break-all; } .session-checkbox { accent-color: #58a6ff; margin: 3px 0 0; }
+  #main { flex: 1; overflow-y: auto; padding: 24px; } #summary { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: stretch; }
+  .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px 16px; min-width: 120px; }.stat .label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: .5px; }.stat .value { font-size: 20px; font-weight: 600; margin-top: 4px; }
+  .overview { flex-basis: 100%; color: #c9d1d9; font-size: 13px; padding: 2px 0; }.summary-action { display: flex; align-items: stretch; } #export-markdown { height: 100%; }
+  #comparison { max-width: 800px; margin: -4px 0 20px; } .comparison-panel { border: 1px solid #30363d; background: #161b22; border-radius: 8px; overflow: hidden; }.comparison-title { padding: 10px 14px; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: .5px; }.comparison-table { width: 100%; border-collapse: collapse; font-size: 13px; }.comparison-table th, .comparison-table td { padding: 10px 14px; border-bottom: 1px solid #21262d; text-align: left; }.comparison-table tr:last-child th, .comparison-table tr:last-child td { border-bottom: 0; }.comparison-table th { color: #8b949e; font-weight: 500; }.comparison-table thead th { color: #e6edf3; font-weight: 600; }.comparison-empty { color: #8b949e; margin: 0; }
+  #timeline-tools { max-width: 800px; display: none; align-items: center; gap: 10px; margin-bottom: 14px; } #event-search { flex: 1; min-width: 0; color: #e6edf3; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 9px 12px; font: inherit; font-size: 13px; } #search-status { color: #8b949e; font-size: 12px; white-space: nowrap; }
+  #timeline { display: flex; flex-direction: column; gap: 12px; max-width: 800px; }.event { border-left: 3px solid #30363d; padding: 10px 16px; border-radius: 6px; background: #161b22; }.event .time { font-size: 11px; color: #8b949e; }.event .type { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; margin-bottom: 4px; }.event.user { border-left-color: #58a6ff; }.event.commentary { border-left-color: #d29922; }.event.final { border-left-color: #3fb950; }.event.tool { border-left-color: #a371f7; }.event.diff { border-left-color: #f778ba; }.event pre { white-space: pre-wrap; word-break: break-word; background: #0d1117; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 6px; max-height: 300px; overflow-y: auto; }.event code, .diff-file-name { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }.code-toggle { appearance: none; border: 0; background: transparent; color: #8b949e; padding: 5px 0 0; font-size: 12px; }.code-toggle:hover { background: transparent; border-color: transparent; color: #58a6ff; }.token-key { color: #79c0ff; }.token-string { color: #a5d6ff; }.token-number { color: #79c0ff; }.token-boolean, .token-null { color: #ff7b72; }.token-punctuation { color: #c9d1d9; }.diff-file { margin-top: 8px; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }.diff-file-name { padding: 7px 10px; background: #21262d; color: #c9d1d9; font-size: 12px; font-weight: 600; }.diff-line { display: block; padding: 0 10px; font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }.diff-line.added { background: #0f3d2e; color: #aff5b4; }.diff-line.removed { background: #4b1d27; color: #ffdcd7; }.diff-line.meta { background: #1f2d3d; color: #a5d6ff; }.diff-line.context { color: #c9d1d9; }.diff-toggle { margin: 0 10px 6px; } #placeholder { color: #8b949e; }
 </style>
 </head>
 <body>
-<div id="sidebar">
-  <h1>Codex Sessions</h1>
-  <div id="sessionList">Loading...</div>
-</div>
-<div id="main">
-  <div id="timeline"><p id="placeholder">Select a session from the left.</p></div>
-</div>
-
+<div id="sidebar"><div class="sidebar-heading"><h1>Codex Sessions</h1><button id="compare-toggle" class="theme-action" type="button" aria-pressed="false">Compare Sessions</button></div><div id="sessionList">Loading...</div></div>
+<div id="main"><div id="summary"></div><div id="comparison"></div><div id="timeline-tools"><input id="event-search" type="search" placeholder="Filter prompts, messages, tool calls, and diffs…" aria-label="Filter timeline events"><span id="search-status" aria-live="polite"></span></div><div id="timeline"><p id="placeholder">Select a session from the left.</p></div></div>
 <script>
-let activeId = null;
+let sessions = [], activeSession = null, activeEvents = [], compareMode = false;
+const selectedForComparison = new Map();
 
 async function loadSessions() {
-  const res = await fetch('/api/sessions');
-  const sessions = await res.json();
+  const res = await fetch('/api/sessions'); sessions = await res.json(); renderSessionList();
+}
+function renderSessionList() {
   const list = document.getElementById('sessionList');
-  if (!sessions.length) {
-    list.innerHTML = '<p style="color:#8b949e;font-size:13px;">No sessions found yet. Run a Codex task first.</p>';
-    return;
-  }
+  if (!sessions.length) { list.innerHTML = '<p id="placeholder">No sessions found yet. Run a Codex task first.</p>'; return; }
   list.innerHTML = '';
-  sessions.forEach(s => {
-    const div = document.createElement('div');
-    div.className = 'session-item';
-    div.dataset.id = s.id;
-    div.innerHTML = '<div>' + (s.timestamp || s.filename) + '</div>' +
-      '<div class="cwd">' + s.cwd + '</div>';
-    div.addEventListener('click', () => selectSession(s.id, div));
-    list.appendChild(div);
+  sessions.forEach(session => {
+    const item = document.createElement('div'); item.className = 'session-item' + (!compareMode && activeSession && activeSession.id === session.id ? ' active' : '');
+    if (compareMode) { const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'session-checkbox'; check.checked = selectedForComparison.has(session.id); check.setAttribute('aria-label', 'Select ' + (session.timestamp || session.filename)); check.addEventListener('click', e => e.stopPropagation()); check.addEventListener('change', () => toggleComparisonSession(session)); item.appendChild(check); }
+    const details = document.createElement('div'); details.innerHTML = '<div>' + escapeHtml(formatTimestamp(session.timestamp || session.filename)) + '</div><div class="cwd">' + escapeHtml(session.cwd) + '</div>'; item.appendChild(details);
+    item.addEventListener('click', () => compareMode ? toggleComparisonSession(session) : selectSession(session)); list.appendChild(item);
   });
 }
-
-async function selectSession(id, el) {
-  document.querySelectorAll('.session-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  activeId = id;
-  const res = await fetch('/api/sessions/' + id);
-  const events = await res.json();
-  renderTimeline(events);
+async function fetchEvents(session) { if (session.events) return session.events; const res = await fetch('/api/sessions/' + session.id); const events = await res.json(); if (!res.ok) throw new Error(events.error || 'Unable to load session'); session.events = events; return events; }
+function clearSingleSessionView() { document.getElementById('summary').innerHTML = ''; document.getElementById('timeline-tools').style.display = 'none'; document.getElementById('event-search').value = ''; document.getElementById('search-status').textContent = ''; document.getElementById('timeline').innerHTML = ''; }
+function renderActiveSession() { if (!activeSession) return; renderSummary(); document.getElementById('timeline-tools').style.display = 'flex'; document.getElementById('event-search').value = ''; renderFilteredTimeline(); }
+async function selectSession(session) { activeSession = session; activeEvents = await fetchEvents(session); if (compareMode) return; renderSessionList(); renderActiveSession(); }
+async function toggleComparisonSession(session) {
+  if (selectedForComparison.has(session.id)) selectedForComparison.delete(session.id);
+  else { if (selectedForComparison.size === 2) { const firstId = selectedForComparison.keys().next().value; selectedForComparison.delete(firstId); } selectedForComparison.set(session.id, session); }
+  renderSessionList(); await renderComparison();
 }
-
-function renderTimeline(events) {
-  const timeline = document.getElementById('timeline');
-  timeline.innerHTML = '';
-  events.forEach(obj => {
-    const card = buildCard(obj);
-    if (card) timeline.appendChild(card);
-  });
-  if (!timeline.children.length) {
-    timeline.innerHTML = '<p id="placeholder">No renderable events in this session.</p>';
-  }
-}
-
-function buildCard(obj) {
-  const payload = obj.payload || {};
-  let type = null, label = '', body = '';
-
-  if (payload.type === 'user_message') {
-    type = 'user'; label = 'User Prompt'; body = payload.message;
-  } else if (payload.type === 'agent_message') {
-    type = payload.phase === 'final_answer' ? 'final' : 'commentary';
-    label = payload.phase === 'final_answer' ? 'Codex Final Answer' : 'Codex Commentary';
-    body = payload.message;
-  } else if (obj.type === 'response_item' && payload.type === 'custom_tool_call') {
-    type = 'tool'; label = 'Tool Call: ' + (payload.name || '');
-    body = payload.input || '';
-  } else if (payload.type === 'patch_apply_end') {
-    type = 'diff'; label = 'File Change';
-    const changes = payload.changes || {};
-    body = Object.entries(changes).map(([p, c]) =>
-      p + ' (' + c.type + ')\n' + (c.content || '')
-    ).join('\n\n');
-  }
-
-  if (!type) return null;
-  const div = document.createElement('div');
-  div.className = 'event ' + type;
-  div.innerHTML = '<div class="time">' + (obj.timestamp || '') + '</div>' +
-    '<div class="type">' + label + '</div>' +
-    (body ? '<pre>' + escapeHtml(body) + '</pre>' : '');
-  return div;
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-loadSessions();
+function getStats(events) { let totalTokens = 0, cachedTokens = 0, toolCalls = 0, fileChanges = 0; events.forEach(obj => { const p = obj.payload || {}; if (p.type === 'token_count' && p.info && p.info.last_token_usage) { totalTokens += p.info.last_token_usage.total_tokens || 0; cachedTokens += p.info.last_token_usage.cached_input_tokens || 0; } if (obj.type === 'response_item' && p.type === 'custom_tool_call') toolCalls++; if (p.type === 'patch_apply_end') fileChanges++; }); return { totalTokens, cachedTokens, cacheRate: totalTokens ? Math.round(cachedTokens / totalTokens * 100) : 0, toolCalls, fileChanges }; }
+function renderSummary() { const stats = getStats(activeEvents); document.getElementById('summary').innerHTML = '<div class="overview">' + escapeHtml(sessionOverview(activeEvents, stats)) + '</div>' + stat('Total Tokens', stats.totalTokens.toLocaleString()) + stat('Cache Hit Rate', stats.cacheRate + '%') + stat('Tool Calls', stats.toolCalls) + stat('Files Changed', stats.fileChanges) + '<div class="summary-action"><button id="export-markdown" class="theme-action" type="button">Export as Markdown</button></div>'; document.getElementById('export-markdown').addEventListener('click', exportMarkdown); }
+function stat(label, value) { return '<div class="stat"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>'; }
+function sessionDuration(events) { const timestamps = events.map(event => new Date(event.timestamp)).filter(date => !Number.isNaN(date.getTime())).sort((a, b) => a - b); return timestamps.length > 1 ? formatDuration(timestamps[timestamps.length - 1] - timestamps[0]) : ''; }
+function sessionOverview(events, stats) { const duration = sessionDuration(events); return 'Built ' + stats.fileChanges + ' file change' + (stats.fileChanges === 1 ? '' : 's') + ' across ' + stats.toolCalls + ' tool call' + (stats.toolCalls === 1 ? '' : 's') + (duration ? ' in ~' + duration : '') + '.'; }
+function formatDuration(milliseconds) { const minutes = Math.max(1, Math.round(milliseconds / 60000)); return minutes < 60 ? minutes + ' minute' + (minutes === 1 ? '' : 's') : Math.floor(minutes / 60) + ' hour' + (Math.floor(minutes / 60) === 1 ? '' : 's'); }
+async function renderComparison() { const target = document.getElementById('comparison'); if (!compareMode) { target.innerHTML = ''; return; } const choices = Array.from(selectedForComparison.values()); if (choices.length < 2) { target.innerHTML = '<p class="comparison-empty">Select two sessions to compare their stats.</p>'; return; } const eventSets = await Promise.all(choices.map(fetchEvents)); if (!compareMode) return; const stats = eventSets.map(getStats); const names = choices.map(s => formatTimestamp(s.timestamp || s.filename)); const durations = eventSets.map(sessionDuration); target.innerHTML = '<div class="comparison-panel"><div class="comparison-title">Session comparison</div><table class="comparison-table"><thead><tr><th>Metric</th><th>' + escapeHtml(names[0]) + '</th><th>' + escapeHtml(names[1]) + '</th></tr></thead><tbody>' + comparisonRow('Total Tokens', stats[0].totalTokens.toLocaleString(), stats[1].totalTokens.toLocaleString()) + comparisonRow('Cache Hit Rate', stats[0].cacheRate + '%', stats[1].cacheRate + '%') + comparisonRow('Tool Calls', stats[0].toolCalls, stats[1].toolCalls) + comparisonRow('Files Changed', stats[0].fileChanges, stats[1].fileChanges) + comparisonRow('Duration', durations[0], durations[1]) + '</tbody></table></div>'; }
+function comparisonRow(label, a, b) { return '<tr><th>' + label + '</th><td>' + a + '</td><td>' + b + '</td></tr>'; }
+function renderFilteredTimeline() { const query = document.getElementById('event-search').value.trim().toLowerCase(), matching = activeEvents.filter(event => eventSearchText(event).includes(query)); document.getElementById('search-status').textContent = query ? matching.length + ' matching event' + (matching.length === 1 ? '' : 's') : ''; renderTimeline(matching, query); }
+function renderTimeline(events, query) { const timeline = document.getElementById('timeline'); timeline.innerHTML = ''; events.forEach(obj => { const card = buildCard(obj); if (card) timeline.appendChild(card); }); if (!timeline.children.length) timeline.innerHTML = '<p id="placeholder">' + (query ? 'No events match this filter.' : 'No renderable events in this session.') + '</p>'; }
+function eventDetails(obj) { const p = obj.payload || {}; if (p.type === 'user_message') return { type: 'user', label: 'User Prompt', body: p.message || '' }; if (p.type === 'agent_message') { const final = p.phase === 'final_answer'; return { type: final ? 'final' : 'commentary', label: final ? 'Codex Final Answer' : 'Codex Commentary', body: p.message || '' }; } if (obj.type === 'response_item' && p.type === 'custom_tool_call') return { type: 'tool', label: 'Tool Call: ' + (p.name || ''), body: normaliseText(p.input) }; if (p.type === 'patch_apply_end') return { type: 'diff', label: 'File Change', changes: p.changes || {} }; return null; }
+function buildCard(obj) { const details = eventDetails(obj); if (!details) return null; const card = document.createElement('div'); card.className = 'event ' + details.type; card.innerHTML = '<div class="time">' + escapeHtml(formatTimestamp(obj.timestamp || '')) + '</div><div class="type">' + escapeHtml(details.label) + '</div>'; if (details.type === 'diff') card.appendChild(renderDiff(details.changes)); else if (details.body) card.appendChild(renderCodeBlock(details.body, details.type === 'tool')); return card; }
+function renderCodeBlock(source, highlighted) { const lines = source.split('\n'), pre = document.createElement('pre'), code = document.createElement('code'), render = visible => { const text = visible ? lines.slice(0, 15).join('\n') : source; code.innerHTML = highlighted ? highlightCode(text) : escapeHtml(text); }; render(lines.length > 15); pre.appendChild(code); if (lines.length <= 15) return pre; const wrapper = document.createElement('div'), toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'code-toggle'; toggle.textContent = 'Show more'; toggle.setAttribute('aria-expanded', 'false'); toggle.addEventListener('click', () => { const expanded = toggle.getAttribute('aria-expanded') === 'true'; render(expanded); toggle.textContent = expanded ? 'Show more' : 'Show less'; toggle.setAttribute('aria-expanded', String(!expanded)); }); wrapper.appendChild(pre); wrapper.appendChild(toggle); return wrapper; }
+function eventSearchText(obj) { const p = obj.payload || {}; return p.type === 'patch_apply_end' ? Object.entries(p.changes || {}).map(([file, change]) => file + ' ' + normaliseText(change && change.type) + ' ' + normaliseText(change && change.content)).join('\n').toLowerCase() : normaliseText(p.message || p.input || '').toLowerCase(); }
+function renderDiff(changes) { const wrapper = document.createElement('div'), files = Object.entries(changes || {}); if (!files.length) { wrapper.textContent = 'No diff content recorded.'; return wrapper; } files.forEach(([file, change]) => { const diff = document.createElement('div'); diff.className = 'diff-file'; const name = document.createElement('div'); name.className = 'diff-file-name'; name.textContent = file + (change && change.type ? ' (' + change.type + ')' : ''); diff.appendChild(name); const rows = normaliseText(change && change.content).split('\n').map(line => { const row = document.createElement('code'); row.className = 'diff-line ' + diffLineType(line); row.innerHTML = highlightDiffLine(line); diff.appendChild(row); return row; }); if (rows.length > 15) addDiffToggle(diff, rows); wrapper.appendChild(diff); }); return wrapper; }
+function addDiffToggle(diff, rows) { let expanded = false; rows.slice(15).forEach(row => row.hidden = true); const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'code-toggle diff-toggle'; toggle.textContent = 'Show more'; toggle.setAttribute('aria-expanded', 'false'); toggle.addEventListener('click', () => { expanded = !expanded; rows.slice(15).forEach(row => row.hidden = !expanded); toggle.textContent = expanded ? 'Show less' : 'Show more'; toggle.setAttribute('aria-expanded', String(expanded)); }); diff.appendChild(toggle); }
+function exportMarkdown() { if (!activeSession) return; const stats = getStats(activeEvents); const heading = activeSession.timestamp || activeSession.filename; let markdown = '# Codex Session Report\n\n' + '**Session:** ' + markdownText(heading) + '\n\n**Working directory:** `' + String(activeSession.cwd || 'unknown').replace(/`/g, '\\`') + '`\n\n## Session Stats\n\n| Metric | Value |\n| --- | ---: |\n| Total Tokens | ' + stats.totalTokens.toLocaleString() + ' |\n| Cache Hit Rate | ' + stats.cacheRate + '% |\n| Tool Calls | ' + stats.toolCalls + ' |\n| Files Changed | ' + stats.fileChanges + ' |\n\n## Timeline\n'; activeEvents.forEach(obj => { const details = eventDetails(obj); if (!details) return; markdown += '\n### ' + details.label + (obj.timestamp ? ' — ' + obj.timestamp : '') + '\n\n'; if (details.type === 'diff') { const files = Object.entries(details.changes); if (!files.length) markdown += 'No diff content recorded.\n'; files.forEach(([file, change]) => { markdown += '#### `' + file.replace(/`/g, '\\`') + '`' + (change && change.type ? ' (' + markdownText(change.type) + ')' : '') + '\n\n```diff\n' + normaliseText(change && change.content) + '\n```\n'; }); } else markdown += fencedMarkdown(details.body, details.type === 'tool' ? 'json' : '') + '\n'; }); const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'codex-session-' + safeFilename(heading) + '.md'; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
+function fencedMarkdown(text, language) { const content = normaliseText(text), fence = content.includes('```') ? '````' : '```'; return fence + language + '\n' + content + '\n' + fence; } function markdownText(value) { return String(value).replace(/[\\`*_{}\[\]<>]/g, '\\$&'); } function safeFilename(value) { return String(value).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'report'; }
+function formatTimestamp(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date); } function diffLineType(line) { if (line.startsWith('+') && !line.startsWith('+++')) return 'added'; if (line.startsWith('-') && !line.startsWith('---')) return 'removed'; if (line.startsWith('@@') || line.startsWith('diff ') || line.startsWith('+++') || line.startsWith('---')) return 'meta'; return 'context'; } function normaliseText(value) { if (typeof value === 'string') return value; if (value == null) return ''; try { return JSON.stringify(value, null, 2); } catch (_) { return String(value); } } function highlightDiffLine(line) { const prefix = /^[+-]/.test(line) ? line.slice(0, 1) : ''; return escapeHtml(prefix) + highlightCode(line.slice(prefix.length)); } function highlightCode(source) { return escapeHtml(source).replace(/(&quot;(?:\\.|[^&])*?&quot;)(\s*:)?/g, (_, text, colon) => '<span class="' + (colon ? 'token-key' : 'token-string') + '">' + text + '</span>' + (colon ? '<span class="token-punctuation">:</span>' : '')).replace(/\b(true|false)\b/g, '<span class="token-boolean">$1</span>').replace(/\b(null)\b/g, '<span class="token-null">$1</span>').replace(/(?<![\w.])-?\b\d+(?:\.\d+)?\b/g, '<span class="token-number">$&</span>'); } function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+document.getElementById('event-search').addEventListener('input', renderFilteredTimeline); document.getElementById('compare-toggle').addEventListener('click', async () => { compareMode = !compareMode; const button = document.getElementById('compare-toggle'); button.textContent = compareMode ? 'Done Comparing' : 'Compare Sessions'; button.setAttribute('aria-pressed', compareMode); selectedForComparison.clear(); if (compareMode) clearSingleSessionView(); else renderActiveSession(); renderSessionList(); await renderComparison(); }); loadSessions();
 </script>
 </body>
 </html>

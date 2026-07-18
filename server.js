@@ -24,6 +24,12 @@ function findJsonlFiles(dir) {
   return results;
 }
 
+function isSessionFile(filePath) {
+  const root = path.resolve(SESSIONS_ROOT);
+  const resolved = path.resolve(filePath);
+  return resolved.startsWith(root + path.sep) && path.extname(resolved) === '.jsonl';
+}
+
 function getSessionMeta(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
@@ -51,8 +57,13 @@ app.get('/api/sessions', (req, res) => {
 });
 
 app.get('/api/sessions/:id', (req, res) => {
-  const filePath = decodeURIComponent(req.params.id);
-  if (!filePath.startsWith(SESSIONS_ROOT)) {
+  let filePath;
+  try {
+    filePath = decodeURIComponent(req.params.id);
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid session path' });
+  }
+  if (!isSessionFile(filePath)) {
     return res.status(400).json({ error: 'Invalid session path' });
   }
   try {
