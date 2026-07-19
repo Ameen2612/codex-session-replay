@@ -19,6 +19,11 @@ Built for OpenAI Build Week to answer a question every Codex user has: *where ex
 
 Requires Node.js 18+.
 
+```
+npm install
+node server.js
+```
+
 Then open `http://localhost:3000`. The sidebar automatically lists every Codex session found under `~/.codex/sessions`. If the list is empty, run any Codex CLI task first to generate a session file.
 
 No sample data is required — the app reads whatever real session logs already exist on the machine it's run on.
